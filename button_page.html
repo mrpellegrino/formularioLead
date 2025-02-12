@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Button Page</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <button id="myBtn">Click Me</button>
+
+    <div id="myModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Em breve entraremos em contato</h2>
+            <form id="contactForm">
+                <label for="name">Name:</label><br>
+                <input type="text" id="name" name="name" required><br><br>
+                <label for="phone">Telephone:</label><br>
+                <input type="tel" id="phone" name="phone" required><br><br>
+                <input type="hidden" id="latitude" name="latitude">
+                <input type="hidden" id="longitude" name="longitude">
+                <input type="hidden" id="estado" name="estado">
+                <input type="hidden" id="cidade" name="cidade">
+                <input type="hidden" id="bairro" name="bairro">
+                <input type="hidden" id="logradouro" name="logradouro">
+                <input type="submit" value="Submit">
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Get the modal
+        var modal = document.getElementById("myModal");
+
+        // Get the button that opens the modal
+        var btn = document.getElementById("myBtn");
+
+        // Get the <span> element that closes the modal
+        var span = document.getElementsByClassName("close")[0];
+
+        // Função atualizada para obter endereço
+        async function getAddressFromCoordinates(latitude, longitude) {
+            try {
+                console.log('Buscando endereço para:', latitude, longitude);
+                
+                const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=pt-BR`;
+                console.log('Chamando Nominatim:', nominatimUrl);
+                
+                const response = await fetch(nominatimUrl, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'User-Agent': 'Mozilla/5.0'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Falha ao obter dados do Nominatim');
+                }
+
+                const addressData = await response.json();
+                console.log('Dados do endereço:', addressData);
+
+                // Extrair informações do endereço usando os campos corretos
+                document.getElementById("estado").value = addressData.address.state || 'Não disponível';
+                document.getElementById("cidade").value = addressData.address.city || 'Não disponível';
+                document.getElementById("bairro").value = addressData.address.neighbourhood || 
+                                                        addressData.address.suburb || 
+                                                        'Não disponível';
+                document.getElementById("logradouro").value = addressData.address.road + 
+                                                            (addressData.address.postcode ? 
+                                                            ` - CEP: ${addressData.address.postcode}` : '') || 
+                                                            'Não disponível';
+            } catch (error) {
+                console.error("Erro ao obter endereço:", error);
+                document.getElementById("estado").value = "Não disponível";
+                document.getElementById("cidade").value = "Não disponível";
+                document.getElementById("bairro").value = "Não disponível";
+                document.getElementById("logradouro").value = "Não disponível";
+            }
+        }
+
+        // When the user clicks on the button, open the modal
+        btn.onclick = function() {
+            modal.style.display = "block";
+            if (navigator.geolocation) {
+                console.log('Solicitando geolocalização...');
+                navigator.geolocation.getCurrentPosition(
+                    async function(position) {
+                        console.log('Geolocalização obtida:', position);
+                        document.getElementById("latitude").value = position.coords.latitude;
+                        document.getElementById("longitude").value = position.coords.longitude;
+                        await getAddressFromCoordinates(position.coords.latitude, position.coords.longitude);
+                    },
+                    function(error) {
+                        console.error("Erro detalhado de geolocalização:", error);
+                        let errorMessage;
+                        switch(error.code) {
+                            case error.PERMISSION_DENIED:
+                                errorMessage = "Usuário negou a solicitação de geolocalização.";
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                errorMessage = "Informação de localização indisponível.";
+                                break;
+                            case error.TIMEOUT:
+                                errorMessage = "Tempo esgotado ao obter localização.";
+                                break;
+                            default:
+                                errorMessage = "Erro desconhecido ao obter localização.";
+                        }
+                        alert(errorMessage);
+                        document.getElementById("latitude").value = "Não disponível";
+                        document.getElementById("longitude").value = "Não disponível";
+                        document.getElementById("estado").value = "Não disponível";
+                        document.getElementById("cidade").value = "Não disponível";
+                        document.getElementById("bairro").value = "Não disponível";
+                        document.getElementById("logradouro").value = "Não disponível";
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+            } else {
+                alert("Geolocalização não é suportada neste navegador.");
+            }
+        }
+
+        // When the user clicks on <span> (x), close the modal
+        span.onclick = function() {
+            modal.style.display = "none";
+        }
+
+        // When the user clicks anywhere outside of the modal, close it
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        // Atualização do envio do formulário
+        var form = document.getElementById("contactForm");
+        form.addEventListener("submit", function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                name: document.getElementById("name").value,
+                phone: document.getElementById("phone").value,
+                latitude: document.getElementById("latitude").value,
+                longitude: document.getElementById("longitude").value,
+                estado: document.getElementById("estado").value,
+                cidade: document.getElementById("cidade").value,
+                bairro: document.getElementById("bairro").value,
+                logradouro: document.getElementById("logradouro").value
+            };
+
+
+            console.log('Enviando dados:', formData);
+
+            fetch('https://script.google.com/macros/s/AKfycbwR2SPKgcrkKfXX5KgAyUI5ldyiI0jyDvQyxE4eHyfX0xUa7nJB-aTVNeCLaIEm5_--9g/exec', {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(formData)
+            })
+            .then(() => {
+                alert("Dados enviados com sucesso!");
+                form.reset();
+                modal.style.display = "none";
+            })
+            .catch(error => {
+                alert("Erro ao enviar dados: " + error.message);
+                console.error('Error:', error);
+            });
+        });
+    </script>
+</body>
+</html>
